@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2013
+VisualStudioVersion = 12.0.21005.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JoYoung", "JoYoung.vcxproj", "{7F815E84-324B-4B6D-A4C4-4167F30C51BD}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JyRobotControl", "..\RobotControl\JyRobotControl\JyRobotControl.vcxproj", "{DC2E626F-5DDA-4817-8BAF-8F01988244A5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7F815E84-324B-4B6D-A4C4-4167F30C51BD}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7F815E84-324B-4B6D-A4C4-4167F30C51BD}.Debug|Win32.Build.0 = Debug|Win32
+		{7F815E84-324B-4B6D-A4C4-4167F30C51BD}.Release|Win32.ActiveCfg = Release|Win32
+		{7F815E84-324B-4B6D-A4C4-4167F30C51BD}.Release|Win32.Build.0 = Release|Win32
+		{DC2E626F-5DDA-4817-8BAF-8F01988244A5}.Debug|Win32.ActiveCfg = Debug|Win32
+		{DC2E626F-5DDA-4817-8BAF-8F01988244A5}.Debug|Win32.Build.0 = Debug|Win32
+		{DC2E626F-5DDA-4817-8BAF-8F01988244A5}.Release|Win32.ActiveCfg = Release|Win32
+		{DC2E626F-5DDA-4817-8BAF-8F01988244A5}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
