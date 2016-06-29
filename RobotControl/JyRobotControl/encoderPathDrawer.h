@@ -1,11 +1,10 @@
 #include <vector>
-
-extern int initPathDrawer();
+#include "JoyoungRobot.h"
 
 template<typename T>
 struct Point{
 	T x, y, z;
-	Point(const T& x_ = .0f, const T& y_ = .0f, const T& z_ = .0f){
+	Point(const T& x_ = 0, const T& y_ = 0, const T& z_ = 0){
 		x = x_;
 		y = y_;
 		z = z_;
@@ -14,17 +13,29 @@ struct Point{
 typedef Point<int> Pointi;
 typedef Point<float> Pointf;
 
+
 class EncoderPathDrawer{
 public:
-	void setRegion(const int& length, const int& width);
-	void getRegion(int& length, int& width){ length = regionLength; width = regionWidth; return; }
-	void addPoint(const int& x, const int& y, const int&z);
-	void addPoint(const Pointi& newPoint);
+	EncoderPathDrawer() :yaw(.0f), regionLength(.0f), regionWidth(.0f), b(270.0f), pathUpdate(false){}
+
+	void setRegion(const float& length, const float& width);
+	void getRegion(float& length, float& width){ length = regionLength; width = regionWidth; return; }
+	void addPoint(const float& x, const float& y, const float&z);
+	void addPoint(const Pointf& newPoint);
 	void drawPath();
-	void getCurrentPos(Pointi& curPos);
-	void createPathPoint();
+	void getCurrentPos(Pointf& curPos);
+	void createPathPoint(int motorEncoderL, int motorEncoderR);
+	bool pathUpdate;
+
 private:
-	std::vector<Pointi> originalPath;			//real position in world coordinate system (mm)
+	std::vector<Pointf> realPath;			//real position in world coordinate system (mm)
 	std::vector<Pointf> path;
-	int regionLength, regionWidth;
+	float regionLength, regionWidth;		//mm
+
+	float yaw;
+	const float b;							//ÂÖ¾à, 270mm
 };
+
+extern int initPathDrawer();
+extern EncoderPathDrawer pathDrawer;
+extern void encoderDataChangedProc(LPVOID pProcParam, const SensorType sensorType, const int sensorIndex, const LPVOID sesorReportData, const int sesorReportSize);

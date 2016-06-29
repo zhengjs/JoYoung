@@ -71,7 +71,8 @@ struct JoyoungRow
         const BYTE& xorByte = *(pRowEnd - 2);
         if (getBytes_Xor(pBytes + 1, pRowEnd - 2) != xorByte)//检查 奇偶校验
         {
-            throw(-1);
+            //throw(-1);
+			printf_s("Head Xor verify failed!\n");
             pNextRow = pBytes + 1;//只跳过头一个字节
             return false;
         }
@@ -87,7 +88,8 @@ struct JoyoungRow
         type = (JoyoungRowType)*pBytes;
         if (type != RRT_MotorEncoder &&type != RRT_Bump &&type != RRT_Infrared&&type != RRT_WheelDrop)
         {
-            throw(-1);
+            //throw(-1);
+			printf_s("Unknown data type!\n");
             type = RRT_Unknow;
             return false;
         }

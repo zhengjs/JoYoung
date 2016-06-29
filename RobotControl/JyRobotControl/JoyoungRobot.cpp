@@ -93,10 +93,10 @@ openGl thread
 	只需要创建该操作的类，并实现ThreadProc_接口，复写Run方法，定义一个Thread_成员，最后
 	在合适的时刻调用Thread_成员的Start方法，线程即启动
 ******************************************************************************/
-class openglThread :public ThreadProc_
+class OpenglThread :public ThreadProc_
 {
 public:
-	openglThread() :ThreadProc_()
+	OpenglThread(JoyoungRobotImp* pRobot) :ThreadProc_(), m_pRobot(pRobot)
 	{
 		if (!m_Thread_.Start(this))
 			return;
@@ -105,12 +105,15 @@ protected:
 	void Run(Thread_* pThread) override{
 		initPathDrawer();
 		do{
+			glutPostRedisplay();
 			//printf_s("opengl thread runing!\n");
 			glutMainLoopEvent();
+			Sleep(5);
 		} while (true);
 	}
 private:
 	Thread_ m_Thread_;
+	JoyoungRobotImp* m_pRobot;
 };
 /******************************************************************************
 JoyoungRobotProtocol
@@ -179,7 +182,8 @@ public:
     SerialPort_*			    m_serialAdPort;
     SerialThreadRead*		    m_serialAdReadThread;
 
-	openglThread*				m_openglThread;
+	OpenglThread*				m_openglThread;
+	EncoderPathDrawer*			encoderPathDrawer;
 
 	Lock_					    m_lockMoveType;
 	MoveType				    m_moveType;
@@ -234,6 +238,9 @@ JoyoungRobotImp::JoyoungRobotImp()
 , m_serialAdPort(nullptr)
 , m_serialAdReadThread(nullptr)
 
+, m_openglThread(nullptr)
+, encoderPathDrawer(&pathDrawer)
+
 , m_moveType(MT_Stop)
 , m_moveParam1(0)
 , m_moveParam2(0)
@@ -270,6 +277,10 @@ bool JoyoungRobotImp::init(const UINT& serialJyPort, const UINT& serialJyRate,
         if (NULL == (m_serialJyPort = SerialOpen(serialJyPort, serialJyRate)))
             break;
 
+		BYTE setEncoderRateCommand[9] = {0xA5, 0x00, 0x06, 0x10, 0x00, 0x00, 0x14, 0x00, 0x5a};
+		setEncoderRateCommand[7] = getBytes_Xor(setEncoderRateCommand + 1, setEncoderRateCommand+7);
+		int nWriteBytes = m_serialJyPort->write(setEncoderRateCommand, 9);									//set the encoder data update rate as 50Hz
+
         m_serialJyReadThread = new SerialThreadRead();
         if (m_serialJyReadThread &&!m_serialJyReadThread->init(m_serialJyPort, StatusReportPeriod_MinMS / 2, JoyoungRobotImp::processSerialJyReadBytes, this))
         {
@@ -295,10 +306,9 @@ bool JoyoungRobotImp::init(const UINT& serialJyPort, const UINT& serialJyRate,
 
     }
 
-	if (NULL == m_openglThread){
-		m_openglThread = new openglThread();
+	if (m_serialJyReadThread && (NULL == m_openglThread)){				//
+		m_openglThread = new OpenglThread(this);
 	}
-
     m_movingPlanManager = new MovingPlanManagerImp(this);
     return (m_serialJyReadThread || m_serialAdReadThread);
 }
@@ -385,6 +395,9 @@ void JoyoungRobotImp::processSerialJyReadBytes(vecByte& reportBuffer)
         {
         case JoyoungRowType::RRT_MotorEncoder:
             sensorVariablesChanged(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(row.param.motorEncoder), sizeof(row.param.motorEncoder));
+			if (m_openglThread){
+				encoderDataChangedProc(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(row.param.motorEncoder), sizeof(row.param.motorEncoder));
+			}
             break;
         case JoyoungRowType::RRT_Bump:
             sensorVariablesChanged(m_pReportProcParam, SensorType::ST_Bump, 0, (LPVOID)&(row.param.bump), sizeof(row.param.bump));
