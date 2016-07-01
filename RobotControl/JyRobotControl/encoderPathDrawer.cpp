@@ -66,7 +66,7 @@ void EncoderPathDrawer::createPathPoint(int motorEncoderL, int motorEncoderR){
 	lastEncoderR = motorEncoderR;
 	deltaL *= 0.2f;						//convert to mm
 	deltaR *= 0.2f;						//convert to mm
-	printf_s("deltaL=%f, deltaR=%f ", deltaL, deltaR);
+	//printf_s("deltaL=%f, deltaR=%f ", deltaL, deltaR);
 
 	Pointf currentPos;
 	getCurrentPos(currentPos);
@@ -74,7 +74,7 @@ void EncoderPathDrawer::createPathPoint(int motorEncoderL, int motorEncoderR){
 	currentPos.x += (deltaL + deltaR)*0.5f*sin(yaw);
 	currentPos.y += (deltaL + deltaR)*0.5f*cos(yaw);
 	yaw += (deltaL - deltaR)/b;
-	printf_s("currentX=%f, currentY=%f, yaw=%f \n", currentPos.x, currentPos.y, yaw);
+	//printf_s("currentX=%f, currentY=%f, yaw=%f \n", currentPos.x, currentPos.y, yaw);
 	addPoint(currentPos);
 }
 

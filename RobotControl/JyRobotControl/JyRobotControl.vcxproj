@@ -87,6 +87,7 @@
     <ClInclude Include="MovingTask_Edge_Along.h" />
     <ClInclude Include="MovingTask_Edge_Rotate.h" />
     <ClInclude Include="MovingTask_Edge_Straight.h" />
+    <ClInclude Include="sensor.h" />
     <ClInclude Include="Thread.h" />
     <ClInclude Include="Row_Arduino.h" />
     <ClInclude Include="Row_Joyoung.h" />
@@ -103,6 +104,7 @@
     <ClCompile Include="MovingTask_Edge_Along.cpp" />
     <ClCompile Include="MovingTask_Edge_Rotate.cpp" />
     <ClCompile Include="MovingTask_Edge_Straight.cpp" />
+    <ClCompile Include="sensor.cpp" />
     <ClCompile Include="Thread.cpp" />
     <ClCompile Include="SerialPort.cpp" />
     <ClCompile Include="stdafx.cpp">

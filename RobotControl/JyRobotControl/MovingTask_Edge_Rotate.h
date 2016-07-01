@@ -26,6 +26,8 @@ public:
         const LPVOID sensorData, const int sensorDataSize) override;
 
     virtual void envionmentVariables_Changed_vSlam()override{ ; }
+
+	virtual void sensorValuesChanged(SensorType sensorType) override;
 protected:
     int m_nUltrasonicVariables[4];
 };

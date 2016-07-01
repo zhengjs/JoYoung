@@ -34,6 +34,8 @@ public:
     virtual void envionmentVariables_Changed_Sensor(const SensorType sensorType, const int sensorIndex,
         const LPVOID sensorData, const int sensorDataSize) = 0;
 
+	virtual void sensorValuesChanged(SensorType sensorType) = 0;
+
 protected:
     MovingPlan*                 m_pPlanParent;
     std::atomic<Task_State>     m_taskState;

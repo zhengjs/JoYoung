@@ -75,6 +75,9 @@
     <ClInclude Include="encoderPathDrawer.h">
       <Filter>Source</Filter>
     </ClInclude>
+    <ClInclude Include="sensor.h">
+      <Filter>Source\MovingPlan</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -106,6 +109,9 @@
     </ClCompile>
     <ClCompile Include="encoderPathDrawer.cpp">
       <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="sensor.cpp">
+      <Filter>Source\MovingPlan</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

@@ -26,4 +26,6 @@ public:
 
     virtual void envionmentVariables_Changed_vSlam()override{ ; }
 
+	virtual void sensorValuesChanged(SensorType sensorType) override;
+
 };
