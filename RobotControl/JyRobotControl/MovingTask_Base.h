@@ -48,6 +48,7 @@ public:
 
 	virtual void sensorValuesChanged(SensorType sensorType) = 0;
 
+<<<<<<< HEAD
 	virtual bool doCurrentAction(){
 		Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
 		if (m_actionList.empty() && m_currAction.moveType == MT_NONE)										//判断动作队列是否执行完
@@ -75,6 +76,8 @@ public:
 		m_actionList.push_back(newAction);
 		return true;
 	}
+=======
+>>>>>>> origin/master
 protected:
     MovingPlan*                 m_pPlanParent;
     std::atomic<Task_State>     m_taskState;
