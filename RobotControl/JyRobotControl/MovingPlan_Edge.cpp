@@ -5,8 +5,8 @@
 #include "MovingTask_Edge_Rotate.h"
 #include "MovingTask_Edge_Along.h"
 
-MovingPlan_Edge::MovingPlan_Edge(MovingPlanManager* pPlanManager)
-: MovingPlan_Base(pPlanManager)
+MovingPlan_Edge::MovingPlan_Edge(MovingPlanManager* pPlanManager, Sensor& sensor_)
+: MovingPlan_Base(pPlanManager, sensor_)
 , m_nTestAlongNum(0)
 {
     m_pTaskCurrent = (MovingTask_Base*)taskCreate(Edge_FirstTask);

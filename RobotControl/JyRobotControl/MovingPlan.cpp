@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "MovingTask_Base.h"
-
+#include "sensor.h"
 #include "MovingPlan_Edge.h"
 
 /************************************************************************/
@@ -37,7 +37,7 @@ MovingPlan* MovingPlanManager::planLaunch(const std::string& planName)
 
     if (0 == planName.compare(Plan_Edge))
     {
-        m_planCurrent = new MovingPlan_Edge(this);
+        m_planCurrent = new MovingPlan_Edge(this, robotSensor);
     }
     if ((MovingPlan*)m_planCurrent)
         ((MovingPlan*)m_planCurrent)->planPlay();

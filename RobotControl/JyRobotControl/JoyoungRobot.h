@@ -50,6 +50,7 @@ typedef enum
 	MT_Speed,		//速度模式 Param1:左轮速度（85mm/s~340mm/s）			Param2:右轮速度（85mm / s~340mm / s）
 	MT_Distance,	//里程模式 Param1:目标里程（+0xFFFF mm ~ -0xFFFF mm）	Param2:速度（85mm / s ~340mm / s）
 	MT_Angle,		//角度模式 Param1:目标角度（+0xFFFF 度 ~ -0xFFFF 度）	Param2:角速度（[+-]37度 / s~148度 / s）
+	MT_NONE = 4
 }
 MoveType;
 

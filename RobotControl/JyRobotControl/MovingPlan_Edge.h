@@ -9,7 +9,7 @@
 class MovingPlan_Edge :public MovingPlan_Base
 {
 public:
-    MovingPlan_Edge(MovingPlanManager* pManager);
+	MovingPlan_Edge(MovingPlanManager* pManager, Sensor& sensor_);
     ~MovingPlan_Edge();
 
     virtual const std::string& planName()override{ return MovingPlanManager::Plan_Edge; }
@@ -34,4 +34,4 @@ const static std::string Task_Edge_Straight = "Task_Edge_Straight";
 const static std::string Task_Edge_Rotate   = "Task_Edge_Rotate";
 const static std::string Task_Edge_Along    = "Task_Edge_Along";
 
-const static std::string Edge_FirstTask = Task_Edge_Straight;
+const static std::string Edge_FirstTask = Task_Edge_Along;//Task_Edge_Straight;

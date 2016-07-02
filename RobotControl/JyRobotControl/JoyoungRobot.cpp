@@ -25,6 +25,7 @@ using namespace std;
 
 #include "encoderPathDrawer.h"
 #include "GL/freeglut.h"
+#include "sensor.h"
 
 #include <atomic>
 
@@ -398,15 +399,22 @@ void JoyoungRobotImp::processSerialJyReadBytes(vecByte& reportBuffer)
 			if (m_openglThread){
 				encoderDataChangedProc(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(row.param.motorEncoder), sizeof(row.param.motorEncoder));
 			}
+			robotSensor.setSensorValues(ST_MotorEncoder, 0, (LPVOID)&(row.param.motorEncoder), sizeof(row.param.motorEncoder));
             break;
         case JoyoungRowType::RRT_Bump:
             sensorVariablesChanged(m_pReportProcParam, SensorType::ST_Bump, 0, (LPVOID)&(row.param.bump), sizeof(row.param.bump));
+			robotSensor.setSensorValues(ST_Bump, 0, (LPVOID)&(row.param.bump), sizeof(row.param.bump));
+			//printf_s("bump data: %d %d\n", robotSensor.mBump.leftBump, robotSensor.mBump.rightBump);
             break;
         case JoyoungRowType::RRT_Infrared:
             sensorVariablesChanged(m_pReportProcParam, SensorType::ST_Infrared, 0, (LPVOID)&(row.param.infrared), sizeof(row.param.infrared));
+			robotSensor.setSensorValues(ST_Infrared, 0, (LPVOID)&(row.param.infrared), sizeof(row.param.infrared));
+			printf_s("Infrared data: %d %d %d %d %d \n", robotSensor.mInfrared.infraredL1, robotSensor.mInfrared.infraredL2, \
+					robotSensor.mInfrared.infraredC, robotSensor.mInfrared.infraredR2, robotSensor.mInfrared.infraredR1 );
             break;
         case JoyoungRowType::RRT_WheelDrop:
             sensorVariablesChanged(m_pReportProcParam, SensorType::ST_WheelDrop, 0, (LPVOID)&(row.param.drop), sizeof(row.param.drop));
+			robotSensor.setSensorValues(ST_WheelDrop, 0, (LPVOID)&(row.param.drop), sizeof(row.param.drop));
             break;
         default:
             break;
@@ -421,8 +429,9 @@ void  JoyoungRobotImp::sensorVariablesChanged(LPVOID pProcParam,
     if (m_pReportProc)
         m_pReportProc(pProcParam, sensorType, sensorIndex, sesorReportData, sesorReportSize);
     MovingTask* curTask = m_movingPlanManager->taskCurrent();
-    if (curTask)
-        ((MovingTask_Base*)curTask)->envionmentVariables_Changed_Sensor(sensorType, sensorIndex, sesorReportData, sesorReportSize);
+	if (curTask)
+		//((MovingTask_Base*)curTask)->envionmentVariables_Changed_Sensor(sensorType, sensorIndex, sesorReportData, sesorReportSize);
+		((MovingTask_Base*)curTask)->sensorValuesChanged(sensorType);
 }
 
 /******************************************************************************
@@ -524,6 +533,29 @@ bool JoyoungRobotProtocol::setMoveType2Bytes(const MoveType& moveType, const int
             *mtR = ((nParam2 & 0xFF) << 8) + ((nParam2 & 0xFF00) >> 8);
 
             *(BYTE*)(mtR + 1) = getBytes_Xor(buf + 1, buf + btSize - 2);
+			memcpy(&bytes[0], buf, bytes.size());
+		}
+		return true;
+	case MT_Distance:
+		{
+			const int btSize = 12;
+			bytes.resize(btSize);
+			BYTE buf[btSize] = { 0xA5,
+				0x00, 0x09,
+				0x00,
+				0x72,
+				0x00, 0x00,
+				0x00,
+				0x00, 0x00,
+				0x00,
+				0x5A };
+			WORD* mileage = (WORD*)(buf + 5);
+			WORD* speed = (WORD*)(buf + 8);
+			buf[7] = nParam1 > 0 ? 1 : 2;
+			nParam1 = abs(nParam1);
+			*mileage = ((nParam1 & 0xFF) << 8) + ((nParam1 & 0xFF00) >> 8);
+			*speed = ((nParam2 & 0xFF) << 8) + ((nParam2 & 0xFF00) >> 8);;
+			buf[10] = getBytes_Xor(buf + 1, buf + btSize - 2);
 			memcpy(&bytes[0], buf, bytes.size());
 		}
 		return true;
