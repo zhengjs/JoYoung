@@ -24,6 +24,7 @@ public:
 	void getRegion(float& length, float& width){ length = regionLength; width = regionWidth; return; }
 	void addPoint(const float& x, const float& y, const float&z);
 	void addPoint(const Pointf& newPoint);
+	void drawRobot();
 	void drawPath();
 	void getCurrentPos(Pointf& curPos);
 	void createPathPoint(int motorEncoderL, int motorEncoderR);

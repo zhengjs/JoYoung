@@ -81,10 +81,8 @@ public:
 		return true;
 	}
 	bool isRobotStopped(){
-		if (mbNewEncoder){
-			if (mLastEncoder.leftMotor == mEncoder.leftMotor && mLastEncoder.rightMotor == mEncoder.rightMotor && mLastEncoder.stamp < mEncoder.stamp){
-				return true;
-			}
+		if (mLastEncoder.leftMotor == mEncoder.leftMotor && mLastEncoder.rightMotor == mEncoder.rightMotor && mLastEncoder.stamp < mEncoder.stamp){
+			return true;
 		}
 		return false;
 	}

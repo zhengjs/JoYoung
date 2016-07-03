@@ -307,6 +307,10 @@ bool JoyoungRobotImp::init(const UINT& serialJyPort, const UINT& serialJyRate,
 
     }
 
+	{
+		initPathDrawer();
+	}
+
 	if (m_serialJyReadThread && (NULL == m_openglThread)){				//
 		m_openglThread = new OpenglThread(this);
 	}

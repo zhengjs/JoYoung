@@ -5,6 +5,11 @@
 #include<math.h>
 #include "encoderPathDrawer.h"
 
+const GLfloat Pi = 3.1415926536f;
+EncoderPathDrawer pathDrawer;
+float spinX = 0, spinY = 0;
+
+
 void EncoderPathDrawer::setRegion(const float& length, const float& width){
 	regionLength = length;
 	regionWidth = width;
@@ -12,8 +17,8 @@ void EncoderPathDrawer::setRegion(const float& length, const float& width){
 
 void EncoderPathDrawer::addPoint(const float& x, const float& y, const float&z){
 	if (abs(x) > 0.5*regionLength || abs(y) > 0.5*regionWidth){
-		//printf_s("Error! Point (%d, %d, %d) out of bounds.\n", x, y, z);
-		return;
+		printf_s("Point (%f, %f, %f) out of bounds.\n", x, y, z);
+		//return;
 	}
 	Pointf newPoint(x, y, .0f);
 	realPath.push_back(newPoint);
@@ -27,7 +32,64 @@ void EncoderPathDrawer::addPoint(const Pointf& newPoint){
 	addPoint(newPoint.x, newPoint.y, newPoint.z);
 }
 
+void EncoderPathDrawer::drawRobot(){
+	int n = 50;
+	GLfloat R = 0.08f;
+
+	glPushMatrix();
+	glColor3f( 250.0/255, 128.0/255, 114.0/255);
+	glTranslated(path.back().x, path.back().y, path.back().z);
+	glBegin(GL_POLYGON);//OpenGL要求：指定顶点的命令必须包含在glBegin函数之后，  
+						//glEnd函数之前（否则指定的顶点将被忽略）。并由glBegin来指明如何使用这些点  
+						//GL_POLYGON表示画多边形（由点连接成多边形）
+	for (size_t i = 0; i<n; ++i)
+		glVertex3f(R*cos(2 * Pi / n*i), R*sin(2 * Pi / n*i), 0);
+	glEnd();
+
+	glRotatef(-yaw, 0, 0, 1);
+
+	glPointSize(4.0f);
+	glColor3f(0, 0.6, 0.5);
+	glBegin(GL_POINTS);//OpenGL要求：指定顶点的命令必须包含在glBegin函数之后，  
+	//glEnd函数之前（否则指定的顶点将被忽略）。并由glBegin来指明如何使用这些点  
+	//GL_POLYGON表示画多边形（由点连接成多边形）
+	R = 0.09f;
+	glVertex3f(R*cos(Pi / 6), R*sin(Pi / 6), 0);
+	glVertex3f(R*cos(Pi / 3), R*sin(Pi / 3), 0);
+	glVertex3f(0, R, 0);
+	glVertex3f(R*cos(Pi * 4 / 6), R*sin(Pi * 4 / 6), 0);
+	glVertex3f(R*cos(Pi * 5 / 6), R*sin(Pi * 5 / 6), 0);
+
+	glColor3f(0, 0.8, 0.4);
+	R = 0.07f;
+	n = 20;
+	for (size_t i = 0; i < n; i++){
+		glVertex3f(R*cos(Pi*i / 2.2 / n), R*sin(Pi*i / 2.2 / n), 0);
+		glVertex3f(-R*cos(Pi*i / 2.2 / n), R*sin(Pi*i / 2.2 / n), 0);
+	}
+	glEnd();
+
+	glPopMatrix();
+}
+
 void EncoderPathDrawer::drawPath(){
+	glTranslatef(0, 0, 1);
+	glRotatef(spinX, 0, 1, 0);
+	glRotatef(spinY, 1, 0, 0);
+	gluLookAt(path.back().x, path.back().y, 1, path.back().x, path.back().y, 0, sin(yaw*Pi/180), cos(yaw*Pi/180), 0);
+	//glOrtho(-2, 2, -2, 2, -2, 2);
+
+	glLineWidth(1.0f);
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glBegin(GL_LINES);
+	for (int i = -15; i <= 15; i++){
+		glVertex3f(-3.0f, 0.2*i, .0f);
+		glVertex3f(3.0f, 0.2*i, .0f);
+		glVertex3f(0.2*i, -3.0f, .0f);
+		glVertex3f(0.2*i, 3.0f, .0f);
+	}
+	glEnd();
+
 	glLineWidth(2.8f);
 	glColor3f(.6f, .6f, 1.0f);
 	glBegin(GL_LINES);
@@ -35,8 +97,9 @@ void EncoderPathDrawer::drawPath(){
 		glVertex3f(path[i - 1].x, path[i - 1].y, path[i - 1].z);
 		glVertex3f(path[i].x, path[i].y, path[i].z);
 	}
-
 	glEnd();
+
+	drawRobot();
 }
 
 void EncoderPathDrawer::getCurrentPos(Pointf& curPos){
@@ -79,8 +142,6 @@ void EncoderPathDrawer::createPathPoint(int motorEncoderL, int motorEncoderR){
 }
 
 
-EncoderPathDrawer pathDrawer;
-int spinX = 0, spinY = 0;
 
 void encoderDataChangedProc(LPVOID pProcParam, const SensorType sensorType, const int sensorIndex, const LPVOID sesorReportData, const int sesorReportSize){
 	if (ST_MotorEncoder != sensorType)
@@ -94,16 +155,12 @@ void encoderDataChangedProc(LPVOID pProcParam, const SensorType sensorType, cons
 }
 
 
-
-
 void display(){
 	glClear(GL_COLOR_BUFFER_BIT);
 	glLoadIdentity();
 	//glPushMatrix();
-	glRotatef(spinX, 0, 1, 0);
-	glRotatef(spinY, 1, 0, 0);
-	pathDrawer.drawPath();
 	//glPopMatrix();
+	pathDrawer.drawPath();
 	glFlush();								//command should to be done right now
 }
 
@@ -177,7 +234,7 @@ int initPathDrawer()
 	glutMotionFunc(mouseMove);
 
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);		//设置opengl关闭后，仍可以执行后续代码
-	//glutMainLoop();							//进行消息循环,调用该函数程序将进入死循环，后续代码无法执行
+	glutMainLoop();							//进行消息循环,调用该函数程序将进入死循环，后续代码无法执行
 
 	return 0;
 }

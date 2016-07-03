@@ -46,6 +46,7 @@ void MovingTask_Edge_Along::envionmentVariables_Changed_Sensor(const SensorType 
     if (checkUnsafe2Stop(pRobot))
         return;
 
+	if (false)
     do{
         int D2 = m_nUltrasonicVariables[2];
         int D3 = m_nUltrasonicVariables[3];
@@ -125,17 +126,29 @@ void MovingTask_Edge_Along::envionmentVariables_Changed_Sensor(const SensorType 
         }
     }
     while (false);
+
+	do{
+
+	} while (false);
 }
 
 bool MovingTask_Edge_Along::checkUnsafe2Stop(JoyoungRobot* pRobot)
 {
+	static bool slowDown = false;			
     do 
     {
         if (0 == m_nUltrasonicVariables[0] || 0 == m_nUltrasonicVariables[1])
             break;
-        if (m_nUltrasonicVariables[0] >= 240 && m_nUltrasonicVariables[1] >= 240)
+        if (m_nUltrasonicVariables[0] >= 340 && m_nUltrasonicVariables[1] >= 340)
             break;
-
+		if (m_nUltrasonicVariables[0] >= 240 && m_nUltrasonicVariables[1] >= 240){
+			if (!slowDown){
+				pRobot->setMoveType(MT_Speed, Speed_Default / 2, Speed_Default / 2);
+				slowDown = true;
+			}
+			break;
+		}
+		slowDown = false;
         pRobot->setMoveType(MT_Stop, 0, 0);
         ((MovingPlan_Base*)m_pPlanParent)->taskFinished(this, nullptr, 0);
         return true;
@@ -152,26 +165,21 @@ void MovingTask_Edge_Along::sensorValuesChanged(SensorType sensorType){
 	//printf_s("TASK_ALONG: DO COMMAND!\n");
 	Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
 	JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
-<<<<<<< HEAD
 	if (sensor.mBump.rightBump || sensor.mInfrared.infraredC || sensor.mInfrared.infraredR2 || sensor.mInfrared.infraredR1){
-=======
-	if (sensor.mInfrared.infraredC || sensor.mInfrared.infraredR2 || sensor.mInfrared.infraredR1){
->>>>>>> origin/master
 		pRobot->setMoveType(MT_Stop, 0, 0);
 		printf_s("TASK_ALONG FINISHED! Infrared: %d %d %d %d %d\n", sensor.mInfrared.infraredL1, sensor.mInfrared.infraredL2, sensor.mInfrared.infraredC, sensor.mInfrared.infraredR2, sensor.mInfrared.infraredR1);
 		((MovingPlan_Base*)m_pPlanParent)->taskFinished(this, nullptr, 0);
 		return;
 	}
-<<<<<<< HEAD
 	if (doCurrentAction())
 		return;
 	int speedL = 0, speedR = 0, time = 0;
 	if (sensor.mBump.leftBump || sensor.mInfrared.infraredL1 || sensor.mInfrared.infraredL2){
 		if (sensor.mBump.leftBump){
+			pRobot->setMoveType(MT_Stop, 0, 0);	
 			speedL = -40;
 			speedR = -80;
-			time = 2000;
-			pRobot->setMoveType(MT_Stop, 0, 0);									//先停下来
+			time = 2000;														//先停下来
 			addAction(MT_Speed, speedL , speedR, time);							// 2s
 			printf_s("TASK_ALONG: Left bump! Set speed L%d R%d %dms\n", speedL, speedR, time);
 			if (sensor.mInfrared.infraredL2){
@@ -179,31 +187,25 @@ void MovingTask_Edge_Along::sensorValuesChanged(SensorType sensorType){
 				speedR = 40;
 				addAction(MT_Speed, speedL, speedR, time);
 			}
-=======
-	if (sensor.mInfrared.infraredL1 || sensor.mInfrared.infraredL2){
-		if (sensor.mBump.leftBump){
-			pRobot->setMoveType(MT_Speed, -20, - 40);		//右轮速度降低
-			printf_s("TASK_ALONG: Left bump! Set speed L%d R%d\n", -20,  - 40);
->>>>>>> origin/master
 		}
 		else if (sensor.mInfrared.infraredL2)
 		{
-			pRobot->setMoveType(MT_Speed, Speed_Default-30, Speed_Default - 70);
-			printf_s("TASK_ALONG: Left2 infrared, no bump, set speed L%d R%d!\n", Speed_Default-30, Speed_Default - 70);
+			speedL = Speed_Default - 30;
+			speedR = Speed_Default - 70;
+			pRobot->setMoveType(MT_Speed, speedL, speedR);
+			printf_s("TASK_ALONG: Left2 infrared, no bump, set speed L%d R%d!\n", speedL, speedR);
 		}
 		else{
 			pRobot->setMoveType(MT_Speed, Speed_Default, Speed_Default);
 			printf_s("TASK_ALONG: Left infrared, no bump, go forward!\n");
 		}
-<<<<<<< HEAD
 		doCurrentAction();
-=======
->>>>>>> origin/master
 	}
 	else{
-		pRobot->setMoveType(MT_Speed, Speed_Default, Speed_Default + 5);				//右轮速度加快
-		printf_s("TASK_ALONG: No infrared! Set speed L%d R%d \n", Speed_Default, Speed_Default + 5);
-		printf_s("Infrared: %d %d %d %d %d\n", sensor.mInfrared.infraredL1, sensor.mInfrared.infraredL2, sensor.mInfrared.infraredC, sensor.mInfrared.infraredR2, sensor.mInfrared.infraredR1);
+		speedL = Speed_Default;
+		speedR = Speed_Default + 5;
+		pRobot->setMoveType(MT_Speed, speedL, speedR);				//右轮速度加快
+		printf_s("TASK_ALONG: No infrared! Set speed L%d R%d \n", speedL, speedR);
 	}
 	return;
 }
