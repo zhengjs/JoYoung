@@ -71,3 +71,8 @@ public:
     const static std::string Plan_Edge;
 };
 
+class MovingPlanManagerImp :public MovingPlanManager
+{
+public:
+	MovingPlanManagerImp(JoyoungRobot* pRobot) :MovingPlanManager(pRobot){}
+};

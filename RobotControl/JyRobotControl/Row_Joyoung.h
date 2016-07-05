@@ -11,14 +11,6 @@ typedef enum{
     RRT_WheelDrop = 0x0F,
 }JoyoungRowType;
 
-BYTE getBytes_Xor(const LPBYTE pStart, const LPBYTE pEnd)
-{
-    BYTE ret = 0;
-    for (LPBYTE pByte = pStart; pByte < pEnd; ++pByte)
-        ret ^= *pByte;
-    return ret;
-}
-
 struct JoyoungRow
 {
     JoyoungRowType  type;

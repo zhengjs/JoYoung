@@ -15,6 +15,11 @@ public:
 	bool mbNewInfrared;
 	bool mbNewUltrasonic;
 	bool mbNewWheelDrop;
+	Lock_	mLockEncoder;
+	Lock_	mLockBump;
+	Lock_	mLockInfrared;
+	Lock_	mLockUltrasonic;
+	Lock_	mLockWheelDrop;
 
 	Sensor() :mbNewEncoder(false), mbNewBump(false), mbNewInfrared(false), mbNewUltrasonic(false), mbNewWheelDrop(false){
 		memset(&mEncoder, 0, sizeof(mEncoder));
@@ -87,11 +92,6 @@ public:
 		return false;
 	}
 private:
-	Lock_	mLockEncoder;
-	Lock_	mLockBump;
-	Lock_	mLockInfrared;
-	Lock_	mLockUltrasonic;
-	Lock_	mLockWheelDrop;
 
 	Variables_MotorEncoder mLastEncoder;
 };

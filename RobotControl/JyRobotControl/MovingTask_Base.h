@@ -6,6 +6,7 @@
 #include "MovingPlan_Base.h"
 #include "MovingPlan.h"
 #include "sensor.h"
+#include "JoyoungRobotImp.h"
 
 #define DIST_ULTRASONIC23 150			//distance between ultrasonic 2 and 3
 /************************************************************************/
@@ -65,8 +66,13 @@ public:
 				m_lastTime = sensor.mEncoder.stamp;
 			}
 			JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
-			pRobot->setMoveType(m_currAction.moveType, m_currAction.param1, m_currAction.param2);
-			m_actionList.erase(m_actionList.begin());
+			if (((JoyoungRobotImp*)pRobot)->setMoveType(m_currAction.moveType, m_currAction.param1, m_currAction.param2, CMD_TYPE_NONBLOCK)){
+				printf_s("Do action: set movetype:%d param1=%d param2=%d\n", m_currAction.moveType, m_currAction.param1, m_currAction.param2);
+				m_actionList.erase(m_actionList.begin());
+			}
+			else{
+				resetCurrAction();
+			}
 			return true;
 		}
 		return false;
@@ -85,7 +91,7 @@ protected:
     MovingPlan*                 m_pPlanParent;
     std::atomic<Task_State>     m_taskState;
 	std::vector<Action>			m_actionList;
-	Action m_currAction;
+	Action		m_currAction;
 	DWORD		m_lastTime;
 private:
 	void resetCurrAction(){

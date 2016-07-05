@@ -112,7 +112,7 @@ BOOL CJoYoungDlg::OnInitDialog()
 	{
 		int nSerialPort_ = GetRobotParamIntValueWithKeyName(_T("SerialPort_"), 5);
 		int nSerialRate = GetRobotParamIntValueWithKeyName(_T("SerialRate"), 115200);
-		m_pRobot = JoyoungRobot::connectRobot(9, 115200, 7, 115200);
+		m_pRobot = JoyoungRobot::connectRobot(4, 115200, 7, 115200);
         if (m_pRobot)
             m_pRobot->setSensorVariablesChangedCallbackProc(CJoYoungDlg::sensorVariablesChangedCallbackProc, this);
         

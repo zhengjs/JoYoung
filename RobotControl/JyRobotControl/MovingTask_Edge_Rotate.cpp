@@ -80,7 +80,7 @@ void MovingTask_Edge_Rotate::envionmentVariables_Changed_Sensor(const SensorType
 
 void MovingTask_Edge_Rotate::sensorValuesChanged(SensorType sensorType){
 	Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
-
+	printf_s("TASK_ROTATE: \n");
 	if (doCurrentAction())
 		return;
 	JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();

@@ -4,6 +4,7 @@
 #include "GL/freeglut.h"
 #include<math.h>
 #include "encoderPathDrawer.h"
+#include "sensor.h"
 
 const GLfloat Pi = 3.1415926536f;
 EncoderPathDrawer pathDrawer;
@@ -17,7 +18,7 @@ void EncoderPathDrawer::setRegion(const float& length, const float& width){
 
 void EncoderPathDrawer::addPoint(const float& x, const float& y, const float&z){
 	if (abs(x) > 0.5*regionLength || abs(y) > 0.5*regionWidth){
-		printf_s("Point (%f, %f, %f) out of bounds.\n", x, y, z);
+		//printf_s("Point (%f, %f, %f) out of bounds.\n", x, y, z);
 		//return;
 	}
 	Pointf newPoint(x, y, .0f);
@@ -38,7 +39,8 @@ void EncoderPathDrawer::drawRobot(){
 
 	glPushMatrix();
 	glColor3f( 250.0/255, 128.0/255, 114.0/255);
-	glTranslated(path.back().x, path.back().y, path.back().z);
+	int pathSize = path.size()-1;
+	glTranslated(path[pathSize].x, path[pathSize].y, 0);
 	glBegin(GL_POLYGON);//OpenGL要求：指定顶点的命令必须包含在glBegin函数之后，  
 						//glEnd函数之前（否则指定的顶点将被忽略）。并由glBegin来指明如何使用这些点  
 						//GL_POLYGON表示画多边形（由点连接成多边形）
@@ -46,25 +48,78 @@ void EncoderPathDrawer::drawRobot(){
 		glVertex3f(R*cos(2 * Pi / n*i), R*sin(2 * Pi / n*i), 0);
 	glEnd();
 
-	glRotatef(-yaw, 0, 0, 1);
-
+	glRotatef(-yaw/Pi*180, 0, 0, 1);
+	Variables_Infrared infraredVars;
+	{
+		CAutoLock autoLock(&robotSensor.mLockInfrared);
+		infraredVars = robotSensor.mInfrared;
+	}
 	glPointSize(4.0f);
 	glColor3f(0, 0.6, 0.5);
 	glBegin(GL_POINTS);//OpenGL要求：指定顶点的命令必须包含在glBegin函数之后，  
 	//glEnd函数之前（否则指定的顶点将被忽略）。并由glBegin来指明如何使用这些点  
 	//GL_POLYGON表示画多边形（由点连接成多边形）
 	R = 0.09f;
+	if (infraredVars.infraredR1){
+		glColor3f(1, 0, 0);
+	}
+	else{
+		glColor3f(0, 0.6, 0.5);
+	}
 	glVertex3f(R*cos(Pi / 6), R*sin(Pi / 6), 0);
+
+	if (infraredVars.infraredR2){
+		glColor3f(1, 0, 0);
+	}
+	else{
+		glColor3f(0, 0.6, 0.5);
+	}
 	glVertex3f(R*cos(Pi / 3), R*sin(Pi / 3), 0);
+
+	if (infraredVars.infraredC){
+		glColor3f(1, 0, 0);
+	}
+	else{
+		glColor3f(0, 0.6, 0.5);
+	}
 	glVertex3f(0, R, 0);
+
+	if (infraredVars.infraredL2){
+		glColor3f(1, 0, 0);
+	}
+	else{
+		glColor3f(0, 0.6, 0.5);
+	}
 	glVertex3f(R*cos(Pi * 4 / 6), R*sin(Pi * 4 / 6), 0);
+
+	if (infraredVars.infraredL1){
+		glColor3f(1, 0, 0);
+	}
+	else{
+		glColor3f(0, 0.6, 0.5);
+	}
 	glVertex3f(R*cos(Pi * 5 / 6), R*sin(Pi * 5 / 6), 0);
 
-	glColor3f(0, 0.8, 0.4);
 	R = 0.07f;
 	n = 20;
+	Variables_Bump bumpVars;
+	{
+		CAutoLock autoLock(&robotSensor.mLockBump);
+		bumpVars = robotSensor.mBump;
+	}
+	if (bumpVars.rightBump)
+		glColor3f(1, 0, 0);
+	else
+		glColor3f(0, 0.8, 0.4);
 	for (size_t i = 0; i < n; i++){
 		glVertex3f(R*cos(Pi*i / 2.2 / n), R*sin(Pi*i / 2.2 / n), 0);
+	}
+
+	if (bumpVars.leftBump)
+		glColor3f(1, 0, 0);
+	else
+		glColor3f(0, 0.8, 0.4);
+	for (size_t i = 0; i < n; i++){
 		glVertex3f(-R*cos(Pi*i / 2.2 / n), R*sin(Pi*i / 2.2 / n), 0);
 	}
 	glEnd();
@@ -76,7 +131,8 @@ void EncoderPathDrawer::drawPath(){
 	glTranslatef(0, 0, 1);
 	glRotatef(spinX, 0, 1, 0);
 	glRotatef(spinY, 1, 0, 0);
-	gluLookAt(path.back().x, path.back().y, 1, path.back().x, path.back().y, 0, sin(yaw*Pi/180), cos(yaw*Pi/180), 0);
+	int pathSize = path.size()-1;
+	gluLookAt(path[pathSize].x, path[pathSize].y, 1, path[pathSize].x, path[pathSize].y, 0, sin(yaw*Pi / 180), cos(yaw*Pi / 180), 0);
 	//glOrtho(-2, 2, -2, 2, -2, 2);
 
 	glLineWidth(1.0f);
@@ -104,7 +160,8 @@ void EncoderPathDrawer::drawPath(){
 
 void EncoderPathDrawer::getCurrentPos(Pointf& curPos){
 	if (realPath.size()){
-		curPos = realPath.back();
+		//curPos = realPath.back();
+		curPos = *(realPath.begin()+realPath.size()-1);
 	}
 	else{
 		curPos.x = .0f;
@@ -140,7 +197,6 @@ void EncoderPathDrawer::createPathPoint(int motorEncoderL, int motorEncoderR){
 	//printf_s("currentX=%f, currentY=%f, yaw=%f \n", currentPos.x, currentPos.y, yaw);
 	addPoint(currentPos);
 }
-
 
 
 void encoderDataChangedProc(LPVOID pProcParam, const SensorType sensorType, const int sensorIndex, const LPVOID sesorReportData, const int sesorReportSize){
@@ -224,7 +280,7 @@ int initPathDrawer()
 
 	glutInitDisplayMode(GLUT_RGB | GLUT_SINGLE);
 	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(800, 800);
+	glutInitWindowSize(400, 400);
 	glutCreateWindow("Encoder path");
 	glShadeModel(GL_SMOOTH);
 	glClearColor(0.4, 0.4, 0.4, 0.0);			//set the background color
@@ -234,7 +290,7 @@ int initPathDrawer()
 	glutMotionFunc(mouseMove);
 
 	glutSetOption(GLUT_ACTION_ON_WINDOW_CLOSE, GLUT_ACTION_GLUTMAINLOOP_RETURNS);		//设置opengl关闭后，仍可以执行后续代码
-	glutMainLoop();							//进行消息循环,调用该函数程序将进入死循环，后续代码无法执行
+	//glutMainLoop();							//进行消息循环,调用该函数程序将进入死循环，后续代码无法执行
 
 	return 0;
 }

@@ -30,19 +30,7 @@
     <ClInclude Include="targetver.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Global.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="SerialPort.h">
-      <Filter>Source</Filter>
-    </ClInclude>
     <ClInclude Include="JoyoungRobot.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Row_Joyoung.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Row_Arduino.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="MovingTask_Edge_Along.h">
@@ -66,17 +54,35 @@
     <ClInclude Include="MovingPlan_Base.h">
       <Filter>Source\MovingPlan</Filter>
     </ClInclude>
-    <ClInclude Include="AutoLock.h">
-      <Filter>Source</Filter>
-    </ClInclude>
-    <ClInclude Include="Thread.h">
-      <Filter>Source</Filter>
-    </ClInclude>
     <ClInclude Include="encoderPathDrawer.h">
       <Filter>Source</Filter>
     </ClInclude>
     <ClInclude Include="sensor.h">
       <Filter>Source\MovingPlan</Filter>
+    </ClInclude>
+    <ClInclude Include="JoyoungRobotImp.h">
+      <Filter>Source</Filter>
+    </ClInclude>
+    <ClInclude Include="Thread.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="SerialPort.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Row_Joyoung.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Row_Arduino.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Global.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="AutoLock.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="serialThread.h">
+      <Filter>Source</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -84,9 +90,6 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="JoyoungRobot.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
-    <ClCompile Include="SerialPort.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="MovingTask_Edge_Rotate.cpp">
@@ -104,14 +107,20 @@
     <ClCompile Include="MovingPlan_Edge.cpp">
       <Filter>Source\MovingPlan</Filter>
     </ClCompile>
-    <ClCompile Include="Thread.cpp">
-      <Filter>Source</Filter>
-    </ClCompile>
     <ClCompile Include="encoderPathDrawer.cpp">
       <Filter>Source</Filter>
     </ClCompile>
     <ClCompile Include="sensor.cpp">
       <Filter>Source\MovingPlan</Filter>
+    </ClCompile>
+    <ClCompile Include="Thread.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="SerialPort.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="serialThread.cpp">
+      <Filter>Source</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

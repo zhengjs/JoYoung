@@ -162,7 +162,6 @@ void MovingTask_Edge_Along::sensorValuesChanged(SensorType sensorType){
 
 	//if (sensorType != SensorType::ST_Infrared && sensorType != SensorType::ST_Bump)
 	//	return;
-	//printf_s("TASK_ALONG: DO COMMAND!\n");
 	Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
 	JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
 	if (sensor.mBump.rightBump || sensor.mInfrared.infraredC || sensor.mInfrared.infraredR2 || sensor.mInfrared.infraredR1){
@@ -177,8 +176,8 @@ void MovingTask_Edge_Along::sensorValuesChanged(SensorType sensorType){
 	if (sensor.mBump.leftBump || sensor.mInfrared.infraredL1 || sensor.mInfrared.infraredL2){
 		if (sensor.mBump.leftBump){
 			pRobot->setMoveType(MT_Stop, 0, 0);	
-			speedL = -40;
-			speedR = -80;
+			speedL = -85;
+			speedR = -150;
 			time = 2000;														//先停下来
 			addAction(MT_Speed, speedL , speedR, time);							// 2s
 			printf_s("TASK_ALONG: Left bump! Set speed L%d R%d %dms\n", speedL, speedR, time);
@@ -192,19 +191,19 @@ void MovingTask_Edge_Along::sensorValuesChanged(SensorType sensorType){
 		{
 			speedL = Speed_Default - 30;
 			speedR = Speed_Default - 70;
-			pRobot->setMoveType(MT_Speed, speedL, speedR);
-			printf_s("TASK_ALONG: Left2 infrared, no bump, set speed L%d R%d!\n", speedL, speedR);
+			if (((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_NONBLOCK))
+				printf_s("TASK_ALONG: Left2 infrared, no bump, set speed L%d R%d!\n", speedL, speedR);
 		}
 		else{
-			pRobot->setMoveType(MT_Speed, Speed_Default, Speed_Default);
-			printf_s("TASK_ALONG: Left infrared, no bump, go forward!\n");
+			if (((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, Speed_Default, Speed_Default, CMD_TYPE_NONBLOCK))
+				printf_s("TASK_ALONG: Left infrared, no bump, go forward!\n");
 		}
 		doCurrentAction();
 	}
 	else{
 		speedL = Speed_Default;
 		speedR = Speed_Default + 5;
-		pRobot->setMoveType(MT_Speed, speedL, speedR);				//右轮速度加快
+		((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_NONBLOCK);						//右轮速度加快
 		printf_s("TASK_ALONG: No infrared! Set speed L%d R%d \n", speedL, speedR);
 	}
 	return;

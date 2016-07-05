@@ -106,3 +106,6 @@ struct Variables_WheelDrop
 };
 
 #define StatusReportPeriod_MinMS	10
+
+
+BYTE getBytes_Xor(const LPBYTE pStart, const LPBYTE pEnd);
