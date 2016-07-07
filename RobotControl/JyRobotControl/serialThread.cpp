@@ -1,18 +1,15 @@
 #include "StdAfx.h"
 #include "serialThread.h"
-#include "AutoLock.h"
-#include "Row_Arduino.h"
-#include "Row_Joyoung.h"
-#include "JoyoungRobotImp.h"
+#include "sensor.h"
+
 /******************************************************************************
 SerialThreadRead
 ******************************************************************************/
-bool SerialThreadRead::init(SerialPort_* pSerialPort_, int nReadPeriod, processSerialReadBytesProc pProc, LPVOID pProcParam)
+bool SerialThreadRead::init(SerialPort_* pSerialPort_, int nReadPeriod, Sensor* pSensor)		///*, processSerialReadBytesProc pProc, LPVOID pProcParam*/
 {
 	m_pSerialPort_ = pSerialPort_;
 	m_nReadPeriod = nReadPeriod;
-	m_pProcessProc = pProc;
-	m_pProcessProcParam = pProcParam;
+	m_pSensor = pSensor;
 
 	if (!m_Thread_.Start(this))
 		return false;
@@ -37,13 +34,21 @@ void SerialThreadRead::Run(Thread_* pThread)
 		reportBuffer.resize(nRead);
 		memcpy(&reportBuffer[0], readBuffer, nRead);
 
-		if (m_pProcessProc){
-			m_pProcessProc(reportBuffer, m_pProcessProcParam);
+		if (m_pSensor){
+			if (m_bJYPort){
+				m_pSensor->processSerialJyReadBytes(reportBuffer);
+				//printf_s("JY serial read thread running!\n");
+			}
+			else{
+				m_pSensor->processSerialAdReadBytes(reportBuffer);
+				//printf_s("AD serial read thread running!\n");
+			}
 			reportBuffer.clear();
 			nRead = 0;
 		}
 	} while (true);
 }
+
 /******************************************************************************
 SerialThreadWrite
 ******************************************************************************/
@@ -54,10 +59,14 @@ void SerialThreadWrite::Run(Thread_* pThread)
 		if (pThread->wantStop(m_nWritePeriod))
 			break;
 		{
-			CAutoLock autoLock(&m_writeBytesLock);
-			if (m_currVersion>m_lastVersion && m_serialPort){					// new data and valid serial port
+			CAutoLock autoLock1(&m_writeBytesLock);
+			CAutoLock autoLock2(&m_currCmdLock);
+			CAutoLock autoLock3(&m_lastSendCmdLock);
+			if (m_currCmd.cmdID>m_lastSendCmd.cmdID && m_serialPort){					// new cmd and valid serial port
 				int nWriteBytes = m_serialPort->write(&m_writeBytes[0], m_writeBytes.size());
-				m_lastVersion = m_currVersion;
+				//printf_s("JY serial write thread running!!!\n");
+				printf_s("Send movetype %s, param1=%d, param2=%d\n", m_currCmd.movetypeName.c_str(), m_currCmd.param1, m_currCmd.param2);
+				m_lastSendCmd = m_currCmd;
 			}
 		}
 	} while (true);
@@ -74,18 +83,67 @@ void SerialThreadWrite::setSerialPort(SerialPort_* serialPort){
 		return;
 }
 
+int SerialThreadWrite::setCommand(const ControlCmd& currCmd){
+	{
+		CAutoLock autoLock(&m_currCmdLock);
+		m_currCmd = currCmd;
+	}
+
+	vecByte cmdBytes;
+	{
+		if (false == m_JYProtocol.setMoveType2Bytes(currCmd.moveType, currCmd.param1, currCmd.param2, cmdBytes))
+			return -1;
+	}
+	{
+		CAutoLock autoLock(&m_writeBytesLock);
+		m_writeBytes = cmdBytes;
+	}
+	printSetMovetype(currCmd);
+}
+bool SerialThreadWrite::isLastCommandSend(void){
+	{
+		CAutoLock autoLock1(&m_currCmdLock);
+		CAutoLock autoLock2(&m_lastSendCmdLock);
+		return (m_currCmd.cmdID == m_lastSendCmd.cmdID);
+	}
+}
+bool SerialThreadWrite::isLastCommandDone(DWORD time){
+
+	if (!isLastCommandSend())
+		return false;
+	{
+		CAutoLock autoLock1(&m_currCmdLock);
+		CAutoLock autoLock2(&m_lastSendCmdLock);
+
+		if (m_lastSendCmd.moveType != MT_Speed){										//上一次命令对于除MT_Speed以外的其他模式，最终状态都是停止
+			if (time - m_lastSendCmd.time>1000 && robotSensor.isRobotStopped()){		//通过判断停止来判断命令是否完成
+				printf_s("last command %s done, time=%d, m_lastSendCmdTime=%d!\n", m_lastSendCmd.movetypeName.c_str(), time, m_lastSendCmd.time);
+				return true;
+			}
+			if (time - m_lastSendCmd.time > 2000){										//命令执行超时，可能命令没有被执行，重发
+				printf_s("time=%d m_lastSendCmdTime=%d\n", time, m_lastSendCmd.time);
+				m_lastSendCmd.cmdID--;
+				m_lastSendCmd.time = m_currCmd.time = time;
+			}
+			return false;
+		}
+		else{																		//上一条命令是速度模式，当持续时间超过指定时间才认为结束
+			if ((m_lastSendCmd.continueTime != 0) && (time - m_lastSendCmd.time < m_lastSendCmd.continueTime)){
+				return false;
+			}
+			return true;
+		}
+	}
+}
+
+void SerialThreadWrite::printSetMovetype(const ControlCmd& currCmd){
+	printf_s("Set movetype %s, param1=%d, param2=%d\n", currCmd.movetypeName.c_str(), currCmd.param1, currCmd.param2);
+}
 void SerialThreadWrite::pushWriteBytes(vecByte& writeBytes){
 	{
 		CAutoLock autoLock(&m_writeBytesLock);
 		m_writeBytes = writeBytes;
-		m_currVersion++;
 	}
-}
-bool SerialThreadWrite::isLastCommandSend(void){
-	return (m_lastVersion == m_currVersion);
-}
-int  SerialThreadWrite::numOfLostCommand(){
-	return (m_currVersion - m_lastVersion);
 }
 /******************************************************************************
 JoyoungRobotProtocol

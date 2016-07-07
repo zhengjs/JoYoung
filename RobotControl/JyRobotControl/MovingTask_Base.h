@@ -19,12 +19,12 @@ enum Task_State :int
     TS_Pausing,
 };
 
-typedef struct{
-	MoveType moveType;
-	int		 param1;
-	int		 param2;
-	DWORD	 time;				//ms
-}Action;
+//typedef struct{
+//	MoveType moveType;
+//	int		 param1;
+//	int		 param2;
+//	DWORD	 time;				//ms
+//}Action;
 
 class MovingTask_Base :public MovingTask
 {
@@ -34,7 +34,7 @@ public:
         , m_pPlanParent(pParentPlan)
         , m_taskState(TS_Stoped)
     {
-		resetCurrAction();
+		//resetCurrAction();
     }
     virtual ~MovingTask_Base(){ ; }
 
@@ -50,60 +50,60 @@ public:
 
 	virtual void sensorValuesChanged(SensorType sensorType) = 0;
 
-	virtual bool doCurrentAction(){
-		Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
-		if (m_actionList.empty() && m_currAction.moveType == MT_NONE)											//判断动作队列是否执行完
-			return false;
+	//virtual bool doCurrentAction(){
+	//	Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
+	//	if (m_actionList.empty() && m_currAction.moveType == MT_NONE)											//判断动作队列是否执行完
+	//		return false;
 
-		if (m_currAction.moveType != MT_NONE && m_currAction.moveType != MT_Speed && !sensor.isRobotStopped())	//等待完成上一个动作
-			return true;
-		if (m_currAction.moveType == MT_Speed && ((sensor.mEncoder.stamp - m_lastTime) < m_currAction.time))
-			return true;
-		resetCurrAction();
-		if (!m_actionList.empty()){
-			m_currAction = m_actionList.front();
-			if (m_currAction.moveType == MT_Speed){
-				m_lastTime = sensor.mEncoder.stamp;
-			}
-			JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
-			if (((JoyoungRobotImp*)pRobot)->setMoveType(m_currAction.moveType, m_currAction.param1, m_currAction.param2, CMD_TYPE_NONBLOCK)){
-				printf_s("Do action: set movetype:%d param1=%d param2=%d\n", m_currAction.moveType, m_currAction.param1, m_currAction.param2);
-				m_actionList.erase(m_actionList.begin());
-			}
-			else{
-				resetCurrAction();
-			}
-			return true;
-		}
-		return false;
-	}
+	//	if (m_currAction.moveType != MT_NONE && m_currAction.moveType != MT_Speed && !sensor.isRobotStopped())	//等待完成上一个动作
+	//		return true;
+	//	if (m_currAction.moveType == MT_Speed && ((sensor.mEncoder.stamp - m_lastTime) < m_currAction.time))
+	//		return true;
+	//	resetCurrAction();
+	//	if (!m_actionList.empty()){
+	//		m_currAction = m_actionList.front();
+	//		if (m_currAction.moveType == MT_Speed){
+	//			m_lastTime = sensor.mEncoder.stamp;
+	//		}
+	//		JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
+	//		if (((JoyoungRobotImp*)pRobot)->setMoveType(m_currAction.moveType, m_currAction.param1, m_currAction.param2, CMD_TYPE_NONBLOCK)){
+	//			printf_s("Do action: set movetype:%d param1=%d param2=%d\n", m_currAction.moveType, m_currAction.param1, m_currAction.param2);
+	//			m_actionList.erase(m_actionList.begin());
+	//		}
+	//		else{
+	//			resetCurrAction();
+	//		}
+	//		return true;
+	//	}
+	//	return false;
+	//}
 
-	virtual bool addAction(MoveType moveType, int param1, int param2, DWORD time=0){
-		Action newAction;
-		newAction.moveType = moveType;
-		newAction.param1 = param1;
-		newAction.param2 = param2;
-		newAction.time = time;
-		m_actionList.push_back(newAction);
-		return true;
-	}
+	//virtual bool addAction(MoveType moveType, int param1, int param2, DWORD time=0){
+	//	Action newAction;
+	//	newAction.moveType = moveType;
+	//	newAction.param1 = param1;
+	//	newAction.param2 = param2;
+	//	newAction.time = time;
+	//	m_actionList.push_back(newAction);
+	//	return true;
+	//}
 protected:
     MovingPlan*                 m_pPlanParent;
     std::atomic<Task_State>     m_taskState;
-	std::vector<Action>			m_actionList;
-	Action		m_currAction;
+	//std::vector<Action>			m_actionList;
+	//Action		m_currAction;
 	DWORD		m_lastTime;
 private:
-	void resetCurrAction(){
-		m_currAction.moveType = MT_NONE;
-		m_currAction.param1 = 0;
-		m_currAction.param2 = 0;
-		m_currAction.time = 0;
-	}
-	void clearActionList(){
-		m_actionList.clear();
-		resetCurrAction();
-		JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
-		pRobot->setMoveType(MT_Stop, 0, 0);
-	}
+	//void resetCurrAction(){
+	//	m_currAction.moveType = MT_NONE;
+	//	m_currAction.param1 = 0;
+	//	m_currAction.param2 = 0;
+	//	m_currAction.time = 0;
+	//}
+	//void clearActionList(){
+	//	m_actionList.clear();
+	//	resetCurrAction();
+	//	JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
+	//	pRobot->setMoveType(MT_Stop, 0, 0);
+	//}
 };

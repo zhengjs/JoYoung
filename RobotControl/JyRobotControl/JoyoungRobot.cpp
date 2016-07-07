@@ -4,7 +4,6 @@
 
 #include <stdio.h>
 
-#include <string>
 #include <map>
 #include <list>
 #include <vector>
@@ -58,8 +57,8 @@ JoyoungRobotImp::JoyoungRobotImp()
 
 , m_serialAdReadThread(nullptr)
 
-, m_openglThread(nullptr)
-, encoderPathDrawer(&pathDrawer)
+, m_pathDrawerThread(&pathDrawer)
+, m_pSensor(&robotSensor)
 
 , m_moveType(MT_Stop)
 , m_moveParam1(0)
@@ -68,13 +67,12 @@ JoyoungRobotImp::JoyoungRobotImp()
 , m_pReportProc(nullptr)
 , m_pReportProcParam(nullptr)
 
-, m_newReportData(false)
 
 , m_robotMainThread(false)
 {
-	m_JYReportBuffer.clear();
-	m_serialJyReadRows.clear();
-	m_serialAdReadRows.clear();
+	m_cmd.cmdID = 0;
+	m_cmd.cmdType = CMD_TYPE_DEFAULT;
+	m_cmd.continueTime = 0;
 }
 
 JoyoungRobotImp::~JoyoungRobotImp()
@@ -86,8 +84,6 @@ JoyoungRobotImp::~JoyoungRobotImp()
     SafeDelete(m_serialJyWriteThread);
 
     SafeDelete(m_serialAdReadThread);
-
-	SafeDelete(m_openglThread);
 
 	SafeDelete(m_robotMainThread);
 }
@@ -106,10 +102,10 @@ bool JoyoungRobotImp::init(const UINT& serialJyPort, const UINT& serialJyRate,
 
 		BYTE setEncoderRateCommand[9] = {0xA5, 0x00, 0x06, 0x10, 0x00, 0x00, 0x14, 0x00, 0x5a};
 		setEncoderRateCommand[7] = getBytes_Xor(setEncoderRateCommand + 1, setEncoderRateCommand+7);
-		int nWriteBytes = serialJYPort_->write(setEncoderRateCommand, 9);									//set the encoder data update rate as 50Hz
+		int nWriteBytes = serialJYPort_->write(setEncoderRateCommand, 9);							//set the encoder data update rate as 50Hz
 
-        m_serialJyReadThread = new SerialThreadRead();
-		if (m_serialJyReadThread && !m_serialJyReadThread->init(serialJYPort_, StatusReportPeriod_MinMS / 2, JoyoungRobotImp::processSerialJyReadBytes, this))
+        m_serialJyReadThread = new SerialThreadRead(true);
+		if (m_serialJyReadThread && !m_serialJyReadThread->init(serialJYPort_, StatusReportPeriod_MinMS / 2, &robotSensor))
         {
             SafeDelete(m_serialJyReadThread);
             break;
@@ -127,18 +123,21 @@ bool JoyoungRobotImp::init(const UINT& serialJyPort, const UINT& serialJyRate,
 		if (NULL == (serialADPort_ = SerialOpen(serialAdPort, serialAdRate)))
             break;
 
-        m_serialAdReadThread = new SerialThreadRead();
-		if (m_serialAdReadThread && !m_serialAdReadThread->init(serialADPort_, StatusReportPeriod_MinMS / 2, JoyoungRobotImp::processSerialAdReadBytes, this))
+        m_serialAdReadThread = new SerialThreadRead(false);
+		if (m_serialAdReadThread && !m_serialAdReadThread->init(serialADPort_, StatusReportPeriod_MinMS / 2, &robotSensor))
 		{
 			SafeDelete(m_serialAdReadThread);
 			break;
 		}
     }
 
-	if (m_serialJyReadThread && (NULL == m_openglThread)){				//
-		m_openglThread = new OpenglThread(this);
-		m_robotMainThread = new RobotMainThread(this);
-		m_movingPlanManager = new MovingPlanManagerImp(this);
+	if (m_serialJyReadThread){										//
+		m_pSensor->init();											//start sensor thread
+		m_pathDrawerThread->init();									//start opengl thread
+		if (NULL == m_robotMainThread)
+			m_robotMainThread = new RobotMainThread(this);
+		if (NULL == m_movingPlanManager)
+			m_movingPlanManager = new MovingPlanManagerImp(this);
 	}
     return (m_serialJyReadThread || m_serialAdReadThread);
 }
@@ -148,13 +147,40 @@ int	JoyoungRobotImp::setMoveType(const MoveType& moveType, const int& moveParam1
 	if (NULL == m_serialJyReadThread)
 		return -1;
 
-	vecByte cmdBytes;
+	std::string movetypeName;
+	switch (moveType)
 	{
-		if(false ==m_jyProtocol.setMoveType2Bytes(moveType, moveParam1, moveParam2, cmdBytes))
-			return -1;
-	}
+	case MT_Speed:
+		movetypeName = "MT_Speed";
+		break;
 
-	m_serialJyWriteThread->pushWriteBytes(cmdBytes);
+	case MT_Stop:
+		movetypeName = "MT_Stop";
+		break;
+
+	case MT_Angle:
+		movetypeName = "MT_Angle";
+		break;
+
+	case MT_Distance:
+		movetypeName = "MT_Distance";
+		break;
+	default:
+		movetypeName = "MT_None";
+		break;
+	}
+	m_cmd.cmdID++;
+	m_cmd.moveType = moveType;
+	m_cmd.param1 = moveParam1;
+	m_cmd.param2 = moveParam2;
+	m_cmd.movetypeName = movetypeName;
+	{
+		CAutoLock autoLock(&(m_pSensor->mLockEncoder));
+		m_cmd.time = m_pSensor->mEncoder.stamp;
+	}
+	m_serialJyWriteThread->setCommand(m_cmd);
+	m_cmd.cmdType = CMD_TYPE_DEFAULT;
+	m_cmd.continueTime = 0;
 
 	{
 		CAutoLock autoLock(&m_lockMoveType);
@@ -164,37 +190,38 @@ int	JoyoungRobotImp::setMoveType(const MoveType& moveType, const int& moveParam1
 	}
 	return 0;
 }
-int	JoyoungRobotImp::setMoveType(const MoveType& moveType, const int& moveParam1, const int& moveParam2, CommandType commandType){
-	switch (commandType){
-	case CMD_TYPE_BLOCK:		//TODO: 该类型暂时无效，因为robotSensor的更新在本线程中，此处阻塞将导致程序死循环，可以将robotSensor的更新放在独立线程中避免这个问题
-		//while (!m_serialJyWriteThread->isLastCommandSend()){
-		//	Sleep(2);
-		//}
-		//if (m_moveType != MT_Speed){
-		//	while (!robotSensor.isRobotStopped()){
-		//		Sleep(2);
-		//	}
-		//}
-		//setMoveType(moveType, moveParam1, moveParam2);
-		//return 1;
-	case CMD_TYPE_NONBLOCK:
-		if (m_serialJyWriteThread->isLastCommandSend()){							//判断上一次命令是否发出
-			if (m_moveType != MT_Speed){											//上一次命令对于除MT_Speed以外的其他模式，最终状态都是停止
-				if (robotSensor.isRobotStopped()){									//通过判断停止来判断命令是否完成
-					setMoveType(moveType, moveParam1, moveParam2);
-					return 1;														//返回1表示命令被成功设置
-				}
+int	JoyoungRobotImp::setMoveType(const MoveType& moveType, const int& moveParam1, const int& moveParam2, CommandType commandType, DWORD continueTime){
+
+	m_cmd.cmdType = commandType;
+	m_cmd.continueTime = continueTime;
+	DWORD time;
+	switch (commandType)
+	{
+	case CMD_TYPE_BLOCK:
+		do{
+			{
+				CAutoLock autoLock(&(m_pSensor->mLockEncoder));
+				time = m_pSensor->mEncoder.stamp;
 			}
-			else{
-				setMoveType(moveType, moveParam1, moveParam2);
-				return 1;
-			}
-		}
+			Sleep(5);
+		} while (!m_serialJyWriteThread->isLastCommandDone(time));
+		setMoveType(moveType, moveParam1, moveParam2);
 		return 0;
+	case CMD_TYPE_NONBLOCK:
+		{
+			CAutoLock autoLock(&(m_pSensor->mLockEncoder));
+			time = m_pSensor->mEncoder.stamp;
+		}
+		if (!m_serialJyWriteThread->isLastCommandDone(time))
+			return -1;
+		else{
+			setMoveType(moveType, moveParam1, moveParam2);
+			return 0;
+		}
 	case CMD_TYPE_NOWAIT:
 	default:
 		setMoveType(moveType, moveParam1, moveParam2);
-		return 1;
+		return 0;
 	}
 }
 
@@ -208,49 +235,9 @@ void JoyoungRobotImp::getLastSetMoveType(MoveType& moveType, int& moveParam1, in
 
 bool JoyoungRobotImp::setSensorVariablesChangedCallbackProc(SensorVariablesChangedCallbackProc pProc, LPVOID pProcParam, const int periodMS)
 {
-	CAutoLock autoLock(&m_lockRows);
 	m_pReportProc		= pProc;
 	m_pReportProcParam	= pProcParam;
 	return false;
-}
-
-void JoyoungRobotImp::processSerialAdReadBytes(vecByte& reportBuffer, LPVOID pProcParam)
-{
-    JoyoungRobotImp* pThis = (JoyoungRobotImp*)pProcParam;
-    pThis->processSerialAdReadBytes(reportBuffer);
-}
-
-void JoyoungRobotImp::processSerialAdReadBytes(vecByte& reportBuffer)
-{
-    CAutoLock autoLock(&m_lockRows);
-    auto nOldRowSize = m_serialAdReadRows.size();
-    m_jyProtocol.getRowsWithBytes(reportBuffer, m_serialAdReadRows);
-    for (auto i = nOldRowSize; i < m_serialAdReadRows.size(); ++i)
-    {
-        const ArduinoRow& row = m_serialAdReadRows[i];
-        switch (row.type)
-        {
-        case ArduinoRowType::ART_Ultrasonic:
-            sensorVariablesChanged(m_pReportProcParam, SensorType::ST_Ultrasonic, 0, (LPVOID)&(row.param.ultrasonic), sizeof(row.param.ultrasonic));
-            break;
-        }
-    }
-}
-
-void JoyoungRobotImp::processSerialJyReadBytes(vecByte& reportBuffer, LPVOID pProcParam)
-{
-    JoyoungRobotImp* pThis = (JoyoungRobotImp*)pProcParam;
-    pThis->processSerialJyReadBytes(reportBuffer);
-}
-
-void JoyoungRobotImp::processSerialJyReadBytes(vecByte& reportBuffer)
-{
-	{
-		CAutoLock autoLock(&m_lockReportBuffer);
-		m_JYReportBuffer.insert(m_JYReportBuffer.end(), reportBuffer.begin(), reportBuffer.end());
-		m_newReportData = true;
-	}
-	return;
 }
 
 void  JoyoungRobotImp::sensorVariablesChanged(LPVOID pProcParam,
@@ -261,51 +248,45 @@ void  JoyoungRobotImp::sensorVariablesChanged(LPVOID pProcParam,
         m_pReportProc(pProcParam, sensorType, sensorIndex, sesorReportData, sesorReportSize);
     MovingTask* curTask = m_movingPlanManager->taskCurrent();
 	if (curTask)
-		//((MovingTask_Base*)curTask)->envionmentVariables_Changed_Sensor(sensorType, sensorIndex, sesorReportData, sesorReportSize);
 		((MovingTask_Base*)curTask)->sensorValuesChanged(sensorType);
 }
 
-void JoyoungRobotImp::mainProc(){
-	size_t nOldRowSize;
-
-	{
-		CAutoLock autoLock(&m_lockReportBuffer);
-		nOldRowSize = m_serialJyReadRows.size();
-		if (m_JYReportBuffer.empty())
-			return;
-		m_jyProtocol.getRowsWithBytes(m_JYReportBuffer, m_serialJyReadRows);
-	}
-	//CAutoLock autoLock(&m_lockRows);
-	for (auto i = nOldRowSize; i < m_serialJyReadRows.size(); ++i)
-	{
-		const JoyoungRow& row = m_serialJyReadRows[i];
-		switch (row.type)
+void JoyoungRobotImp::mainProc(){	
+	if (m_pSensor->mbNewEncoder){
+		Variables_MotorEncoder encoderVar;
 		{
-		case JoyoungRowType::RRT_MotorEncoder:
-			robotSensor.setSensorValues(ST_MotorEncoder, 0, (LPVOID)&(row.param.motorEncoder), sizeof(row.param.motorEncoder));
-			sensorVariablesChanged(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(row.param.motorEncoder), sizeof(row.param.motorEncoder));
-			if (m_openglThread){
-				encoderDataChangedProc(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(row.param.motorEncoder), sizeof(row.param.motorEncoder));
-			}
-			break;
-		case JoyoungRowType::RRT_Bump:
-			robotSensor.setSensorValues(ST_Bump, 0, (LPVOID)&(row.param.bump), sizeof(row.param.bump));
-			sensorVariablesChanged(m_pReportProcParam, SensorType::ST_Bump, 0, (LPVOID)&(row.param.bump), sizeof(row.param.bump));
-			//printf_s("bump data: %d %d\n", robotSensor.mBump.leftBump, robotSensor.mBump.rightBump);
-			break;
-		case JoyoungRowType::RRT_Infrared:
-			robotSensor.setSensorValues(ST_Infrared, 0, (LPVOID)&(row.param.infrared), sizeof(row.param.infrared));
-			sensorVariablesChanged(m_pReportProcParam, SensorType::ST_Infrared, 0, (LPVOID)&(row.param.infrared), sizeof(row.param.infrared));
-			printf_s("Infrared data: %d %d %d %d %d \n", robotSensor.mInfrared.infraredL1, robotSensor.mInfrared.infraredL2, \
-				robotSensor.mInfrared.infraredC, robotSensor.mInfrared.infraredR2, robotSensor.mInfrared.infraredR1);
-			break;
-		case JoyoungRowType::RRT_WheelDrop:
-			robotSensor.setSensorValues(ST_WheelDrop, 0, (LPVOID)&(row.param.drop), sizeof(row.param.drop));
-			sensorVariablesChanged(m_pReportProcParam, SensorType::ST_WheelDrop, 0, (LPVOID)&(row.param.drop), sizeof(row.param.drop));
-			break;
-		default:
-			break;
+			CAutoLock autoLock(&(m_pSensor->mLockEncoder));
+			encoderVar = m_pSensor->mEncoder;
+			m_pSensor->mbNewEncoder = false;
 		}
+		sensorVariablesChanged(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(encoderVar), sizeof(encoderVar));
+	}
+	if (m_pSensor->mbNewBump){
+		Variables_Bump bumpVar;
+		{
+			CAutoLock autoLock(&(m_pSensor->mLockBump));
+			bumpVar = m_pSensor->mBump;
+			m_pSensor->mbNewBump = false;
+		}
+		sensorVariablesChanged(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(bumpVar), sizeof(bumpVar));
+	}
+	if (m_pSensor->mbNewInfrared){
+		Variables_Infrared infraredVar;
+		{
+			CAutoLock autoLock(&(m_pSensor->mLockInfrared));
+			infraredVar = m_pSensor->mInfrared;
+			m_pSensor->mbNewInfrared = false;
+		}
+		sensorVariablesChanged(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(infraredVar), sizeof(infraredVar));
+	}
+	if (m_pSensor->mbNewWheelDrop){
+		Variables_WheelDrop wheeldropVar;
+		{
+			CAutoLock autoLock(&(m_pSensor->mLockWheelDrop));
+			wheeldropVar = m_pSensor->mWheelDrop;
+			m_pSensor->mbNewWheelDrop = false;
+		}
+		sensorVariablesChanged(m_pReportProcParam, SensorType::ST_MotorEncoder, 0, (LPVOID)&(wheeldropVar), sizeof(wheeldropVar));
 	}
 }
 

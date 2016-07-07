@@ -161,50 +161,59 @@ bool MovingTask_Edge_Along::checkUnsafe2Stop(JoyoungRobot* pRobot)
 void MovingTask_Edge_Along::sensorValuesChanged(SensorType sensorType){
 
 	//if (sensorType != SensorType::ST_Infrared && sensorType != SensorType::ST_Bump)
-	//	return;
-	Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
+		//return;
 	JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
-	if (sensor.mBump.rightBump || sensor.mInfrared.infraredC || sensor.mInfrared.infraredR2 || sensor.mInfrared.infraredR1){
-		pRobot->setMoveType(MT_Stop, 0, 0);
-		printf_s("TASK_ALONG FINISHED! Infrared: %d %d %d %d %d\n", sensor.mInfrared.infraredL1, sensor.mInfrared.infraredL2, sensor.mInfrared.infraredC, sensor.mInfrared.infraredR2, sensor.mInfrared.infraredR1);
+	Variables_Bump bumpVar;
+	Variables_Infrared infraredVar;
+	{
+		Sensor& sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
+		CAutoLock autoLock1(&(sensor.mLockBump));
+		bumpVar = sensor.mBump;
+		CAutoLock autoLock2(&(sensor.mLockInfrared));
+		infraredVar = sensor.mInfrared;
+	}
+	if (bumpVar.rightBump || infraredVar.infraredC || infraredVar.infraredR2 || infraredVar.infraredR1){
+		((JoyoungRobotImp*)pRobot)->setMoveType(MT_Stop, 0, 0, CMD_TYPE_BLOCK, 0);
+		printf_s("TASK_ALONG FINISHED! Infrared: %d %d %d %d %d\n", infraredVar.infraredL1, infraredVar.infraredL2, infraredVar.infraredC, infraredVar.infraredR2, infraredVar.infraredR1);
 		((MovingPlan_Base*)m_pPlanParent)->taskFinished(this, nullptr, 0);
 		return;
 	}
-	if (doCurrentAction())
-		return;
 	int speedL = 0, speedR = 0, time = 0;
-	if (sensor.mBump.leftBump || sensor.mInfrared.infraredL1 || sensor.mInfrared.infraredL2){
-		if (sensor.mBump.leftBump){
-			pRobot->setMoveType(MT_Stop, 0, 0);	
+	if (bumpVar.leftBump || infraredVar.infraredL1 || infraredVar.infraredL2){
+		if (bumpVar.leftBump){
+			((JoyoungRobotImp*)pRobot)->setMoveType(MT_Stop, 0, 0, CMD_TYPE_NOWAIT, 0);		//stop right now
 			speedL = -85;
 			speedR = -150;
 			time = 2000;														//先停下来
-			addAction(MT_Speed, speedL , speedR, time);							// 2s
-			printf_s("TASK_ALONG: Left bump! Set speed L%d R%d %dms\n", speedL, speedR, time);
-			if (sensor.mInfrared.infraredL2){
+			//addAction(MT_Speed, speedL , speedR, time);						// 2s
+			((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_BLOCK, time);
+			//printf_s("TASK_ALONG: Left bump! Set speed L%d R%d %dms\n", speedL, speedR, time);
+			if (infraredVar.infraredL2){
 				speedL = 80;
 				speedR = 40;
-				addAction(MT_Speed, speedL, speedR, time);
+				time += 20;
+				//addAction(MT_Speed, speedL, speedR, time);
+				((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_BLOCK, time);
 			}
+			
 		}
-		else if (sensor.mInfrared.infraredL2)
+		else if (infraredVar.infraredL2)
 		{
 			speedL = Speed_Default - 30;
 			speedR = Speed_Default - 70;
-			if (((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_NONBLOCK))
-				printf_s("TASK_ALONG: Left2 infrared, no bump, set speed L%d R%d!\n", speedL, speedR);
+			((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_BLOCK, 0);
+				//printf_s("TASK_ALONG: Left2 infrared, no bump, set speed L%d R%d!\n", speedL, speedR);
 		}
 		else{
-			if (((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, Speed_Default, Speed_Default, CMD_TYPE_NONBLOCK))
-				printf_s("TASK_ALONG: Left infrared, no bump, go forward!\n");
+			((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, Speed_Default, Speed_Default, CMD_TYPE_BLOCK, 0);
+				//printf_s("TASK_ALONG: Left infrared, no bump, go forward!\n");
 		}
-		doCurrentAction();
 	}
 	else{
 		speedL = Speed_Default;
 		speedR = Speed_Default + 5;
-		((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_NONBLOCK);						//右轮速度加快
-		printf_s("TASK_ALONG: No infrared! Set speed L%d R%d \n", speedL, speedR);
+		((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, speedL, speedR, CMD_TYPE_BLOCK, 0);						//右轮速度加快
+		//printf_s("TASK_ALONG: No infrared! Set speed L%d R%d \n", speedL, speedR);
 	}
 	return;
 }

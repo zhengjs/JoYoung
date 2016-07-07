@@ -79,44 +79,54 @@ void MovingTask_Edge_Rotate::envionmentVariables_Changed_Sensor(const SensorType
 }
 
 void MovingTask_Edge_Rotate::sensorValuesChanged(SensorType sensorType){
-	Sensor sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
 	printf_s("TASK_ROTATE: \n");
-	if (doCurrentAction())
-		return;
+
 	JoyoungRobot* pRobot = m_pPlanParent->planManager()->robot();
+	Variables_Bump bumpVar;
+	Variables_Infrared infraredVar;
+	{
+		Sensor& sensor = ((MovingPlan_Base*)m_pPlanParent)->m_sensor;
+		CAutoLock autoLock1(&(sensor.mLockBump));
+		bumpVar = sensor.mBump;
+		CAutoLock autoLock2(&(sensor.mLockInfrared));
+		infraredVar = sensor.mInfrared;
+	}
+
 	int angle = 0;
-	if (sensor.mBump.leftBump){
+	if (bumpVar.leftBump){
 		//pRobot->setMoveType(MT_Distance, -100, 85);					// go backward 100mm at 85 mm/s(minimum speed)
-		addAction(MT_Distance, -100, 85);
+		//addAction(MT_Distance, -100, 85);
+		((JoyoungRobotImp*)pRobot)->setMoveType(MT_Distance, -300, 100, CMD_TYPE_BLOCK, 0);
 		printf_s("TASK_ROTATE: Left bump! Go backward 100mm!\n");
 		angle = 0;
 	}
-	if (sensor.mBump.rightBump){
+	if (bumpVar.rightBump){
 		//pRobot->setMoveType(MT_Distance, -100, 85);					// go backward 100mm at 85 mm/s
-		addAction(MT_Distance, -100, 85);
+		//addAction(MT_Distance, -100, 85);
+		((JoyoungRobotImp*)pRobot)->setMoveType(MT_Distance, -300, 100, CMD_TYPE_BLOCK, 0);
 		printf_s("TASK_ROTATE: Right bump! Go backward 100mm!\n");
 		angle = 90;
 	}
-	if (sensor.mInfrared.infraredL1)
+	if (infraredVar.infraredL1)
 		angle = angle > 30 ? angle : 30;
-	if (sensor.mInfrared.infraredL2)
+	if (infraredVar.infraredL2)
 		angle = angle > 60 ? angle : 60;
-	if (sensor.mInfrared.infraredC)
+	if (infraredVar.infraredC)
 		angle = 90;
-	if (sensor.mInfrared.infraredR2)
+	if (infraredVar.infraredR2)
 		angle = 120;
-	if (sensor.mInfrared.infraredR1)
+	if (infraredVar.infraredR1)
 		angle = 150;
 	if (angle >= 30){
 		//pRobot->setMoveType(MT_Angle, angle, 60);
-		addAction(MT_Angle, angle, 60);
+		//addAction(MT_Angle, angle, 60);
+		//((JoyoungRobotImp*)pRobot)->setMoveType(MT_Speed, 100, -100, CMD_TYPE_BLOCK, 16.82*angle+200);
+		((JoyoungRobotImp*)pRobot)->setMoveType(MT_Angle, angle, 80, CMD_TYPE_BLOCK, 0);
 		printf_s("TASK_ROTATE: Turn right %d degrees!\n", angle);
 		return;
 	}
-	if (doCurrentAction())
-		return;
 
-	pRobot->setMoveType(MT_Stop, 0, 0);
+	((JoyoungRobotImp*)pRobot)->setMoveType(MT_Stop, 0, 0, CMD_TYPE_BLOCK, 0);
 	((MovingPlan_Base*)m_pPlanParent)->taskFinished(this, nullptr, 0);
 	printf_s("TASK_ROTATE FINISHED! No bump and no infrared. \n");
 }

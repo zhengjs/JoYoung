@@ -1,13 +1,13 @@
 #pragma once
 
-#include "Global.h"
 #include <vector>
+#include "Global.h"
 #include "Thread.h"
 #include "SerialPort.h"
 #include "JoyoungRobot.h"
 #include "AutoLock.h"
 
-
+class Sensor;
 /******************************************************************************
 SerialThreadRead
 ******************************************************************************/
@@ -16,17 +16,16 @@ typedef void(*processSerialReadBytesProc)(vecByte& reportBuffer, LPVOID pProcPar
 class SerialThreadRead : public ThreadProc_
 {
 public:
-	SerialThreadRead()
+	SerialThreadRead(bool isJYPort)
 		: m_pSerialPort_(nullptr)
 		, m_nReadPeriod(StatusReportPeriod_MinMS / 2)
-		, m_pProcessProc(nullptr)
-		, m_pProcessProcParam(NULL)
+		, m_bJYPort(isJYPort)
 	{}
 	~SerialThreadRead(){
 		SerialClose(m_pSerialPort_);
 	}
-
-	bool	init(SerialPort_* pSerialPort_, int nReadPeriod, processSerialReadBytesProc pProcessProc, LPVOID pProcessProcParam);
+	
+	bool	init(SerialPort_* pSerialPort_, int nReadPeriod, Sensor* pSensor);		///*processSerialReadBytesProc pProcessProc, LPVOID pProcessProcParam*/
 protected:
 	void	Run(Thread_* pThread)override;
 protected:
@@ -34,48 +33,12 @@ protected:
 
 	int					        m_nReadPeriod;
 
-	processSerialReadBytesProc  m_pProcessProc;
-	LPVOID                      m_pProcessProcParam;
 	Thread_			            m_Thread_;
+	Sensor*						m_pSensor;
+
+	const bool					m_bJYPort;
 };
 
-
-/******************************************************************************
-SerialThreadWrite
-******************************************************************************/
-//class JoyoungRobotImp;
-
-class SerialThreadWrite : public ThreadProc_
-{
-public:
-	SerialThreadWrite(int nWritePeriod, SerialPort_* serialPort=nullptr)
-		: ThreadProc_()
-		, m_nWritePeriod(nWritePeriod)
-		, m_lastVersion(0), m_currVersion(0)
-		, m_serialPort(serialPort)
-	{
-		if (!m_Thread_.Start(this))
-			;
-	}
-	~SerialThreadWrite(){
-		SerialClose(m_serialPort);
-	}
-	void setSerialPort(SerialPort_* serialPort);
-	void pushWriteBytes(vecByte& writeBytes);
-	bool isLastCommandSend(void);
-	int  numOfLostCommand();
-protected:
-	void	Run(Thread_* pThread)override;
-
-protected:
-	Thread_				m_Thread_;
-	Lock_				m_writeBytesLock;
-	int					m_nWritePeriod;
-	size_t				m_lastVersion;
-	size_t				m_currVersion;
-	SerialPort_*		m_serialPort;
-	vecByte				m_writeBytes;
-};
 
 
 /******************************************************************************
@@ -94,7 +57,6 @@ public:
 	template<typename rowType>
 	int getRowsWithBytes(vecByte& bytes, std::vector<rowType>& rows);
 };
-
 
 template<typename rowType>
 int JoyoungRobotProtocol::getRowsWithBytes(vecByte& bytes, std::vector<rowType>& rows)
@@ -138,4 +100,55 @@ int JoyoungRobotProtocol::getRowsWithBytes(vecByte& bytes, std::vector<rowType>&
 
 	return rows.size() - nRowsCount;
 }
+
+/******************************************************************************
+SerialThreadWrite
+******************************************************************************/
+
+class SerialThreadWrite : public ThreadProc_
+{
+public:
+	SerialThreadWrite(int nWritePeriod, SerialPort_* serialPort=nullptr)
+		: ThreadProc_()
+		, m_nWritePeriod(nWritePeriod)
+		, m_serialPort(serialPort)
+	{
+		m_currCmd.cmdID = 0;
+		m_currCmd.moveType = MT_NONE;
+		m_currCmd.param1 = 0;
+		m_currCmd.param2 = 0;
+		m_currCmd.time = 0;
+		m_currCmd.movetypeName = "";
+		m_lastSendCmd.cmdID = 0;
+		m_lastSendCmd.moveType = MT_NONE;
+		m_lastSendCmd.param1 = 0;
+		m_lastSendCmd.param2 = 0;
+		m_lastSendCmd.time = 0;
+		m_lastSendCmd.movetypeName = "";
+		if (!m_Thread_.Start(this))
+			;
+	}
+	~SerialThreadWrite(){
+		SerialClose(m_serialPort);
+	}
+	void setSerialPort(SerialPort_* serialPort);
+	bool isLastCommandSend(void);
+	bool isLastCommandDone(DWORD time);
+	int setCommand(const ControlCmd& currCmd);
+protected:
+	void	Run(Thread_* pThread)override;
+	void	printSetMovetype(const ControlCmd& currCmd);
+	void	pushWriteBytes(vecByte& writeBytes);
+private:
+	Thread_				m_Thread_;
+	int					m_nWritePeriod;
+	//size_t				m_lastVersion;
+	//size_t				m_currVersion;
+	SerialPort_*		m_serialPort;
+	Lock_				m_writeBytesLock;
+	vecByte				m_writeBytes;
+	Lock_				m_currCmdLock, m_lastSendCmdLock;
+	ControlCmd			m_currCmd,  m_lastSendCmd;
+	JoyoungRobotProtocol m_JYProtocol;
+};
 

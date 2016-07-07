@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include <string>
 
 typedef enum
 {
@@ -109,3 +110,24 @@ struct Variables_WheelDrop
 
 
 BYTE getBytes_Xor(const LPBYTE pStart, const LPBYTE pEnd);
+
+
+typedef enum{
+	CMD_TYPE_DEFAULT = 1,	//don't wait, may cover the last command
+	CMD_TYPE_NOWAIT,		//
+	CMD_TYPE_BLOCK,			//线程被阻塞直到释放（上一次动作完成）
+	CMD_TYPE_NONBLOCK		//如果上一次动作没有完成，则函数立刻返回，本次命令被放弃
+}CommandType;
+/************************************************************
+used to record the command sent to the cleaner
+************************************************************/
+typedef struct{
+	MoveType	moveType;
+	std::string	movetypeName;
+	int			param1;
+	int			param2;
+	DWORD		time;					//命令发出的时间，ms
+	DWORD		continueTime;			//命令需要持续的时间，一般用于速度模式，ms
+	DWORD		cmdID;
+	CommandType cmdType;
+}ControlCmd;

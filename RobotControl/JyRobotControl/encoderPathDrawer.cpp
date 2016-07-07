@@ -199,15 +199,14 @@ void EncoderPathDrawer::createPathPoint(int motorEncoderL, int motorEncoderR){
 }
 
 
-void encoderDataChangedProc(LPVOID pProcParam, const SensorType sensorType, const int sensorIndex, const LPVOID sesorReportData, const int sesorReportSize){
-	if (ST_MotorEncoder != sensorType)
-		return;
-	if (sizeof(Variables_MotorEncoder) != sesorReportSize)
-		return;
-
-	Variables_MotorEncoder* encoderVars = (Variables_MotorEncoder*)sesorReportData;
-	//printf_s("encoderL=%d, encoderR=%d, timestamp=%d \n", encoderVars->leftMotor, encoderVars->rightMotor, encoderVars->stamp);				//encoder data update frequency: 100Hz
-	pathDrawer.createPathPoint(encoderVars->leftMotor, encoderVars->rightMotor);
+void EncoderPathDrawer::encoderDataChangedProc(){
+	Variables_MotorEncoder encoderVars;
+	{
+		CAutoLock autoLock(&robotSensor.mLockEncoder);
+		encoderVars = robotSensor.mEncoder;
+	}
+	//printf_s("encoderL=%d, encoderR=%d, timestamp=%d \n", encoderVars.leftMotor, encoderVars.rightMotor, encoderVars.stamp);				//encoder data update frequency: 100Hz
+	createPathPoint(encoderVars.leftMotor, encoderVars.rightMotor);
 }
 
 
@@ -295,3 +294,15 @@ int initPathDrawer()
 	return 0;
 }
 
+void EncoderPathDrawer::Run(Thread_* pThread){
+	initPathDrawer();
+	do{
+		if (pThread->wantStop(m_nPeriod))
+			break;
+		encoderDataChangedProc();
+		glutPostRedisplay();
+		//printf_s("opengl thread runing!\n");
+		glutMainLoopEvent();
+		Sleep(10);
+	} while (true);
+}
